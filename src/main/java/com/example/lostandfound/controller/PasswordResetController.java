@@ -23,6 +23,10 @@ public class PasswordResetController {
     // 2. User submits new password with the token received in email
     @PostMapping("/reset-password")
     public ResponseEntity<String> resetPassword(@RequestParam String token, @RequestBody String newPassword) {
+        // Strip wrapping double quotes if the client sent the password as a JSON string literal
+        if (newPassword != null && newPassword.startsWith("\"") && newPassword.endsWith("\"")) {
+            newPassword = newPassword.substring(1, newPassword.length() - 1);
+        }
         authService.processPasswordReset(token, newPassword);
         return ResponseEntity.ok("Password successfully updated.");
     }
