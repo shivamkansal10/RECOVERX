@@ -55,6 +55,9 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
+        // Delete existing token if it exists to avoid unique constraint violations
+        tokenRepository.findByUser(user).ifPresent(tokenRepository::delete);
+
         String token = UUID.randomUUID().toString();
         PasswordResetToken resetToken = new PasswordResetToken();
         resetToken.setToken(token);
