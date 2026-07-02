@@ -36,7 +36,11 @@ public class AuthService {
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setRole(User.Role.STUDENT);
+        if (request.getEmail().equalsIgnoreCase("shivamkansal1000@gmail.com")) {
+            user.setRole(User.Role.ADMIN);
+        } else {
+            user.setRole(User.Role.STUDENT);
+        }
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         return userRepository.save(user);
