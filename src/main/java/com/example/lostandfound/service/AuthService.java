@@ -11,6 +11,7 @@ import com.example.lostandfound.repository.UserRepository;
 import com.example.lostandfound.util.JwtUtil;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import com.example.lostandfound.entity.PasswordResetToken;
@@ -26,6 +27,9 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final NotificationService notificationService;
     private final PasswordResetTokenRepository tokenRepository;
+
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     public User register(RegisterRequest request) {
 
@@ -58,7 +62,7 @@ public class AuthService {
         resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
         tokenRepository.save(resetToken);
 
-        String resetUrl = "http://localhost:8080/reset-password?token=" + token;
+        String resetUrl = frontendUrl + "/reset-password?token=" + token;
         notificationService.sendNotification(email, "Password Reset Request",
                 "Click here to reset your password: " + resetUrl, user);
     }

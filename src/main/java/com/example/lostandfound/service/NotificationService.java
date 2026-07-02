@@ -37,6 +37,13 @@ public class NotificationService {
 
     public void sendNotification(String to, String subject, String text, User user) {
         log.info("Attempting to send email to: {}", to);
+        // Save to DB first so it always shows up in the web UI
+        try {
+            saveNotification(user, text);
+        } catch (Exception e) {
+            log.error("Failed to save notification to DB for user {}: {}", to, e.getMessage());
+        }
+
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
@@ -45,11 +52,7 @@ public class NotificationService {
             message.setFrom(fromAddress);
 
             mailSender.send(message);
-
-            // ALSO save to DB so it shows up in the web UI
-            saveNotification(user, text);
-
-            log.info("Email successfully sent and saved to DB for: {}", to);
+            log.info("Email successfully sent for: {}", to);
         } catch (MailException e) {
             log.error("EMAIL FAILED for {}: {}", to, e.getMessage(), e);
         }
