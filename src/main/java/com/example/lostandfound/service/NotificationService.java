@@ -6,9 +6,13 @@ import com.example.lostandfound.entity.Notification; // Import your new Entity
 import com.example.lostandfound.repository.NotificationRepository; // Import your Repository
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,11 +22,19 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NotificationService {
 
-    private final JavaMailSender mailSender;
-    private final NotificationRepository notificationRepository; // NEW: Injected
+    private final NotificationRepository notificationRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${spring.mail.username}")
-    private String fromAddress;
+    @Value("${brevo.api.key:}")
+    private String brevoApiKey;
+
+    @Value("${brevo.sender.email:shivamkansal1000@gmail.com}")
+    private String brevoSenderEmail;
+
+    @Value("${brevo.sender.name:RecoverX Lost and Found}")
+    private String brevoSenderName;
+
+    private final HttpClient httpClient = HttpClient.newHttpClient();
 
     // Helper: Saves notification to DB for the UI
     @Transactional
@@ -44,17 +56,39 @@ public class NotificationService {
             log.error("Failed to save notification to DB for user {}: {}", to, e.getMessage());
         }
 
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(text);
-            message.setFrom(fromAddress);
+        if (brevoApiKey == null || brevoApiKey.trim().isEmpty() || brevoApiKey.contains("YOUR_API_KEY")) {
+            log.warn("Brevo API key is not configured. Email to {} not sent via HTTP. (Saved to DB only)", to);
+            return;
+        }
 
-            mailSender.send(message);
-            log.info("Email successfully sent for: {}", to);
-        } catch (MailException e) {
-            log.error("EMAIL FAILED for {}: {}", to, e.getMessage(), e);
+        try {
+            // Build Brevo payload Map
+            Map<String, Object> payload = Map.of(
+                    "sender", Map.of("name", brevoSenderName, "email", brevoSenderEmail),
+                    "to", List.of(Map.of("email", to)),
+                    "subject", subject,
+                    "textContent", text
+            );
+
+            String requestBody = objectMapper.writeValueAsString(payload);
+
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.brevo.com/v3/smtp/email"))
+                    .header("api-key", brevoApiKey)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                    .build();
+
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                log.info("Email successfully sent via Brevo to: {}. Response code: {}", to, response.statusCode());
+            } else {
+                log.error("Failed to send email via Brevo. Status: {}, Body: {}", response.statusCode(), response.body());
+            }
+        } catch (Exception e) {
+            log.error("Error occurred while sending email via Brevo to {}: {}", to, e.getMessage(), e);
         }
     }
 

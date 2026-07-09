@@ -51,6 +51,11 @@ public class AuthService {
     }
     @Transactional
     public void sendResetToken(String email) {
+        sendResetToken(email, null);
+    }
+
+    @Transactional
+    public void sendResetToken(String email, String requestOrigin) {
         userRepository.findAll().forEach(u -> System.out.println("USER IN DB: " + u.getEmail()));
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -65,7 +70,11 @@ public class AuthService {
         resetToken.setExpiryDate(LocalDateTime.now().plusMinutes(15));
         tokenRepository.save(resetToken);
 
-        String resetUrl = frontendUrl + "/reset-password?token=" + token;
+        String baseUrl = (requestOrigin != null && !requestOrigin.trim().isEmpty()) ? requestOrigin : frontendUrl;
+        if (baseUrl.endsWith("/")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        String resetUrl = baseUrl + "/reset-password?token=" + token;
         notificationService.sendNotification(email, "Password Reset Request",
                 "Click here to reset your password: " + resetUrl, user);
     }

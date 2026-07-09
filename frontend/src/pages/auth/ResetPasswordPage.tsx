@@ -51,10 +51,9 @@ export const ResetPasswordPage: React.FC = () => {
     setErrorState(null);
 
     try {
-      // NOTE: Backend bug warning:
-      // The email sent containing this link is generated backend-side pointing at
-      // http://localhost:8080/reset-password?token=... (the backend's host and port).
-      // This is a known backend issue that needs separate resolution.
+      // NOTE: Backend resolution:
+      // The email containing this link is generated dynamically backend-side based on 
+      // the request's Origin/Referer headers to prevent hardcoding localhost.
 
       // Submitting request:
       // Endpoint expects @RequestBody String newPassword, which requires sending a raw

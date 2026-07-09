@@ -15,8 +15,20 @@ public class PasswordResetController {
 
     // 1. User enters email to request a reset
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestParam String email) {
-        authService.sendResetToken(email);
+    public ResponseEntity<String> forgotPassword(@RequestParam String email, jakarta.servlet.http.HttpServletRequest request) {
+        String origin = request.getHeader("Origin");
+        if (origin == null || origin.isEmpty()) {
+            origin = request.getHeader("Referer");
+            if (origin != null && !origin.isEmpty()) {
+                try {
+                    java.net.URI uri = new java.net.URI(origin);
+                    origin = uri.getScheme() + "://" + uri.getAuthority();
+                } catch (Exception e) {
+                    origin = null;
+                }
+            }
+        }
+        authService.sendResetToken(email, origin);
         return ResponseEntity.ok("If an account exists, a reset link has been sent.");
     }
 
